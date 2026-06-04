@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,21 +24,30 @@ fun RoomMapView(
     modifier: Modifier = Modifier
 ) {
     val areaColors = listOf(
-        Color(0xFFEFEAFE), // Purple-ish
-        Color(0xFFE8F0FF), // Blue-ish
-        Color(0xFFE7F5EF), // Green-ish
-        Color(0xFFFFF4DA), // Amber-ish
-        Color(0xFFDFF7F4), // Teal-ish
-        Color(0xFFFFE8ED)  // Rose-ish
+        Color(0xFFF5F3FF), // Soft Purple
+        Color(0xFFEFF6FF), // Soft Blue
+        Color(0xFFECFDF5), // Soft Green
+        Color(0xFFFFFBEB), // Soft Amber
+        Color(0xFFF0FDFA), // Soft Teal
+        Color(0xFFFFF1F2)  // Soft Rose
     )
 
     val areaBorderColors = listOf(
-        Color(0xFF6D5BD0),
-        Color(0xFF2563EB),
-        Color(0xFF167A5A),
-        Color(0xFFB7791F),
+        Color(0xFFDDD6FE),
+        Color(0xFFDBEAFE),
+        Color(0xFFD1FAE5),
+        Color(0xFFFEF3C7),
+        Color(0xFFCCFBF1),
+        Color(0xFFFFE4E6)
+    )
+
+    val areaTextColors = listOf(
+        Color(0xFF6D28D9),
+        Color(0xFF1D4ED8),
+        Color(0xFF047857),
+        Color(0xFFB45309),
         Color(0xFF0F766E),
-        Color(0xFFC2415B)
+        Color(0xFFBE123C)
     )
 
     Column(
@@ -45,7 +56,7 @@ fun RoomMapView(
     ) {
         for (row in 0 until 3) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(90.dp),
+                modifier = Modifier.fillMaxWidth().height(92.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 for (col in 0 until 2) {
@@ -64,13 +75,16 @@ fun RoomMapView(
                             .weight(1f)
                             .fillMaxHeight()
                             .clickable { onAreaClick(area) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) Color(0xFFE6F0FA) else areaColors[colorIndex]
+                            containerColor = if (isSelected) Color(0xFFEEF2FF) else areaColors[colorIndex]
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (isSelected) 6.dp else 1.dp
                         ),
                         border = BorderStroke(
-                            width = if (isSelected) 3.dp else 1.dp,
-                            color = if (isSelected) Color(0xFF2563EB) else areaBorderColors[colorIndex]
+                            width = if (isSelected) 2.5.dp else 1.dp,
+                            color = if (isSelected) Color(0xFF4F46E5) else areaBorderColors[colorIndex]
                         )
                     ) {
                         Column(
@@ -80,18 +94,39 @@ fun RoomMapView(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = area.name,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1C2633)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "보관 중: ${count}개",
-                                fontSize = 12.sp,
-                                color = Color(0xFF5E6B7A)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(14.dp).padding(end = 4.dp)
+                                    )
+                                }
+                                Text(
+                                    text = area.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                    color = if (isSelected) Color(0xFF4F46E5) else Color(0xFF1E293B)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) Color(0xFFC7D2FE) else Color(0xFFF1F5F9).copy(alpha = 0.8f),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Text(
+                                    text = "보관 중: ${count}개",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color(0xFF3730A3) else areaTextColors[colorIndex],
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }

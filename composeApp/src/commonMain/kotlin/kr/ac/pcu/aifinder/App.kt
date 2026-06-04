@@ -1,5 +1,7 @@
 package kr.ac.pcu.aifinder
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,8 +53,8 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
 
     MaterialTheme(
         colorScheme = lightColorScheme(
-            primary = Color(0xFF2563EB),
-            secondary = Color(0xFF0F766E),
+            primary = Color(0xFF4F46E5),
+            secondary = Color(0xFF06B6D4),
             background = Color(0xFFF8FAFC),
             surface = Color(0xFFFFFFFF),
             onPrimary = Color.White
@@ -83,123 +85,150 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                 topBar = {
                     TopAppBar(
                         title = { 
-                            Text(
-                                "AIFinder", 
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B)
-                            ) 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(Color(0xFFEEF2FF), shape = RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "AIFinder", 
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF1E293B),
+                                    fontSize = 20.sp
+                                ) 
+                            }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.White
                         ),
                         actions = {
                             IconButton(onClick = { refreshData() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = "새로고침")
+                                Icon(Icons.Default.Refresh, contentDescription = "새로고침", tint = Color(0xFF64748B))
                             }
                             IconButton(onClick = { 
                                 itemStorage.logout()
                                 currentUser = null
                             }) {
-                                Icon(Icons.Default.ExitToApp, contentDescription = "로그아웃")
+                                Icon(Icons.Default.ExitToApp, contentDescription = "로그아웃", tint = Color(0xFF64748B))
                             }
                         }
                     )
                 },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = Color.White
-                ) {
-                    NavigationBarItem(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        icon = { Icon(Icons.Default.Search, "검색") },
-                        label = { Text("검색") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        icon = { Icon(Icons.Default.Home, "방 지도") },
-                        label = { Text("방 지도") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        icon = { Icon(Icons.Default.Favorite, "즐겨찾기") },
-                        label = { Text("즐겨찾기") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
-                        icon = { Icon(Icons.Default.List, "체크리스트") },
-                        label = { Text("체크") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 4,
-                        onClick = { selectedTab = 4 },
-                        icon = { Icon(Icons.Default.Info, "통계") },
-                        label = { Text("통계") }
-                    )
-                }
-
-            },
-            floatingActionButton = {
-                if (selectedTab == 0 || selectedTab == 1) {
-                    FloatingActionButton(
-                        onClick = { 
-                            launchObjectDetectionCamera(platformContext) {
-                                refreshData()
-                            }
-                        },
-                        containerColor = Color(0xFF2563EB),
-                        contentColor = Color.White
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 8.dp
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "물품 등록")
+                        val navItems = listOf(
+                            Triple(0, Icons.Default.Search, "검색"),
+                            Triple(1, Icons.Default.Home, "방 지도"),
+                            Triple(2, Icons.Default.Favorite, "즐겨찾기"),
+                            Triple(3, Icons.Default.List, "체크리스트"),
+                            Triple(4, Icons.Default.Info, "통계")
+                        )
+                        navItems.forEach { (index, icon, label) ->
+                            NavigationBarItem(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                icon = { Icon(icon, contentDescription = label) },
+                                label = { Text(label, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFF4F46E5),
+                                    selectedTextColor = Color(0xFF4F46E5),
+                                    indicatorColor = Color(0xFFEEF2FF),
+                                    unselectedIconColor = Color(0xFF94A3B8),
+                                    unselectedTextColor = Color(0xFF94A3B8)
+                                )
+                            )
+                        }
+                    }
+                },
+                floatingActionButton = {
+                    if (selectedTab == 0 || selectedTab == 1) {
+                        FloatingActionButton(
+                            onClick = { 
+                                launchObjectDetectionCamera(platformContext) {
+                                    refreshData()
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = Color.Transparent,
+                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                            modifier = Modifier
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add, 
+                                contentDescription = "물품 인식 카메라 기동", 
+                                tint = Color.White,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
                     }
                 }
-            }
-
-        ) { padding ->
+            ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .background(Color(0xFFF8FAFC))
             ) {
-                when (selectedTab) {
-                    0 -> SearchTab(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        items = items,
-                        areas = areas,
-                        recommender = recommender,
-                        onToggleFavorite = { id ->
-                            itemStorage.toggleFavorite(id)
-                            refreshData()
-                        },
-                        onDeleteItem = { id ->
-                            itemStorage.deleteItem(id)
-                            refreshData()
-                        }
-                    )
-                    1 -> RoomMapTab(
-                        areas = areas,
-                        items = items,
-                        itemStorage = itemStorage,
-                        onRename = { refreshData() },
-                        onDeleteItem = { id ->
-                            itemStorage.deleteItem(id)
-                            refreshData()
-                        }
-                    )
-                    2 -> FavoritesTab(
-                        items = items,
-                        onToggleFavorite = { id ->
-                            itemStorage.toggleFavorite(id)
-                            refreshData()
-                        }
-                    )
-                    3 -> ChecklistTab(platformStorage)
-                    4 -> StatsTab(itemStorage)
+                Crossfade(targetState = selectedTab) { tab ->
+                    when (tab) {
+                        0 -> SearchTab(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            items = items,
+                            areas = areas,
+                            recommender = recommender,
+                            onToggleFavorite = { id ->
+                                itemStorage.toggleFavorite(id)
+                                refreshData()
+                            },
+                            onDeleteItem = { id ->
+                                itemStorage.deleteItem(id)
+                                refreshData()
+                            }
+                        )
+                        1 -> RoomMapTab(
+                            areas = areas,
+                            items = items,
+                            itemStorage = itemStorage,
+                            onRename = { refreshData() },
+                            onDeleteItem = { id ->
+                                itemStorage.deleteItem(id)
+                                refreshData()
+                            }
+                        )
+                        2 -> FavoritesTab(
+                            items = items,
+                            onToggleFavorite = { id ->
+                                itemStorage.toggleFavorite(id)
+                                refreshData()
+                            },
+                            onDeleteItem = { id ->
+                                itemStorage.deleteItem(id)
+                                refreshData()
+                            }
+                        )
+                        3 -> ChecklistTab(platformStorage)
+                        4 -> StatsTab(itemStorage)
+                    }
                 }
             }
         }
@@ -275,6 +304,90 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
     }
 }
 
+data class BadgeColor(val background: Color, val tint: Color)
+
+fun getItemBadgeColor(itemName: String): BadgeColor {
+    val name = itemName.lowercase()
+    return when {
+        name.contains("열쇠") || name.contains("key") -> BadgeColor(Color(0xFFFEF3C7), Color(0xFFD97706)) // Amber
+        name.contains("지갑") || name.contains("wallet") || name.contains("카드") || name.contains("신분증") -> BadgeColor(Color(0xFFD1FAE5), Color(0xFF059669)) // Emerald
+        name.contains("폰") || name.contains("휴대폰") || name.contains("phone") || name.contains("패드") || name.contains("가전") -> BadgeColor(Color(0xFFE0F2FE), Color(0xFF0284C7)) // Sky
+        name.contains("책") || name.contains("book") || name.contains("노트") -> BadgeColor(Color(0xFFF3E8FF), Color(0xFF7C3AED)) // Purple
+        name.contains("가방") || name.contains("bag") || name.contains("쇼핑") -> BadgeColor(Color(0xFFFFE4E6), Color(0xFFE11D48)) // Rose
+        else -> BadgeColor(Color(0xFFF1F5F9), Color(0xFF475569)) // Slate
+    }
+}
+
+@Composable
+fun ItemRecordRow(
+    item: ItemRecord,
+    onToggleFavorite: (String) -> Unit,
+    onDeleteItem: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val badgeColor = getItemBadgeColor(item.name)
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(badgeColor.background, shape = RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getItemIcon(item.name),
+                    contentDescription = null,
+                    tint = badgeColor.tint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier.padding(bottom = 2.dp)
+                ) {
+                    Text(
+                        item.areaName,
+                        color = Color(0xFF475569),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Text(
+                    item.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+            }
+            IconButton(onClick = { onToggleFavorite(item.id) }) {
+                Icon(
+                    imageVector = if (item.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "즐겨찾기",
+                    tint = if (item.isFavorite) Color(0xFFEF4444) else Color(0xFF94A3B8)
+                )
+            }
+            IconButton(onClick = { onDeleteItem(item.id) }) {
+                Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color(0xFF94A3B8))
+            }
+        }
+    }
+}
+
 @Composable
 fun SearchTab(
     query: String,
@@ -298,9 +411,14 @@ fun SearchTab(
             value = query,
             onValueChange = onQueryChange,
             label = { Text("찾으시는 물건을 입력하세요") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF4F46E5)) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF4F46E5),
+                focusedLabelColor = Color(0xFF4F46E5),
+                cursorColor = Color(0xFF4F46E5)
+            )
         )
 
         // 1. AI Recommendation Card
@@ -309,37 +427,50 @@ fun SearchTab(
             if (recommendation != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                    border = BorderStroke(2.dp, Color(0xFF2563EB))
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
+                    border = BorderStroke(1.5.dp, Brush.horizontalGradient(listOf(Color(0xFF4F46E5), Color(0xFF06B6D4)))),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFF4F46E5),
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "★ AI 최적 추천 위치",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
                             Text(
-                                "★ AI 최적 추천 위치",
-                                color = Color(0xFF2563EB),
+                                "신뢰도 ${recommendation.confidence}%",
+                                color = Color(0xFF4F46E5),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "(신뢰도 ${recommendation.confidence}%)",
-                                color = Color(0xFF64748B),
-                                fontSize = 11.sp
-                            )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             recommendation.recommendedArea.name,
                             fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF1E293B)
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             recommendation.matchReason,
                             fontSize = 14.sp,
-                            color = Color(0xFF475569)
+                            color = Color(0xFF475569),
+                            lineHeight = 20.sp
                         )
                     }
                 }
@@ -347,58 +478,47 @@ fun SearchTab(
         }
 
         // 2. Filtered Items list
-        Text("등록된 물건 목록", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text("등록된 물건 목록", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color(0xFF1E293B))
         val filtered = items.filter {
             query.isBlank() || it.name.contains(query, ignoreCase = true) || it.areaName.contains(query, ignoreCase = true)
         }
 
         if (filtered.isEmpty()) {
-            Text(
-                "검색 결과가 없습니다.",
-                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                textAlign = TextAlign.Center,
-                color = Color.Gray
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+            ) {
+                Text(
+                    "검색 결과가 없습니다.",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+            }
         } else {
             filtered.forEach { item ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                item.areaName,
-                                color = Color(0xFF0F766E),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                item.name,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B)
-                            )
-                        }
-                        IconButton(onClick = { onToggleFavorite(item.id) }) {
-                            Icon(
-                                imageVector = if (item.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "즐겨찾기",
-                                tint = if (item.isFavorite) Color.Red else Color.Gray
-                            )
-                        }
-                        IconButton(onClick = { onDeleteItem(item.id) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color.Gray)
-                        }
-                    }
-                }
+                ItemRecordRow(
+                    item = item,
+                    onToggleFavorite = onToggleFavorite,
+                    onDeleteItem = onDeleteItem
+                )
             }
         }
+    }
+}
+
+fun getItemIcon(itemName: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val name = itemName.lowercase()
+    return when {
+        name.contains("열쇠") || name.contains("key") -> Icons.Default.Lock
+        name.contains("지갑") || name.contains("wallet") || name.contains("카드") || name.contains("신분증") -> Icons.Default.Person
+        name.contains("폰") || name.contains("휴대폰") || name.contains("phone") -> Icons.Default.Info
+        name.contains("책") || name.contains("book") || name.contains("노트") -> Icons.Default.List
+        name.contains("가방") || name.contains("bag") || name.contains("쇼핑") -> Icons.Default.ShoppingCart
+        else -> Icons.Default.Build
     }
 }
 
@@ -441,46 +561,49 @@ fun RoomMapTab(
                 Text(
                     "${selectedArea.name} 물품 목록",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
                 )
-                Button(onClick = {
-                    renameInputText = selectedArea.name
-                    showRenameDialog = true
-                }) {
-                    Text("구역명 수정")
+                OutlinedButton(
+                    onClick = {
+                        renameInputText = selectedArea.name
+                        showRenameDialog = true
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, Color(0xFF4F46E5)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4F46E5))
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("구역명 수정", fontWeight = FontWeight.Bold)
                 }
             }
 
             if (areaItems.isEmpty()) {
-                Text(
-                    "이 구역에 등록된 물건이 없습니다.",
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                    textAlign = TextAlign.Center,
-                    color = Color.Gray
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+                ) {
+                    Text(
+                        "이 구역에 등록된 물건이 없습니다.",
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
             } else {
                 areaItems.forEach { item ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                item.name,
-                                modifier = Modifier.weight(1f),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            IconButton(onClick = { onDeleteItem(item.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color.Gray)
-                            }
-                        }
-                    }
+                    ItemRecordRow(
+                        item = item,
+                        onToggleFavorite = { id ->
+                            itemStorage.toggleFavorite(id)
+                            onRename()
+                        },
+                        onDeleteItem = onDeleteItem
+                    )
                 }
             }
         }
@@ -489,23 +612,27 @@ fun RoomMapTab(
     if (showRenameDialog && selectedArea != null) {
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
-            title = { Text("구역 이름 변경") },
+            title = { Text("구역 이름 변경", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = renameInputText,
                     onValueChange = { renameInputText = it },
-                    label = { Text("구역 이름") }
+                    label = { Text("구역 이름") },
+                    shape = RoundedCornerShape(12.dp)
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    val newName = renameInputText.trim()
-                    if (newName.isNotEmpty()) {
-                        itemStorage.renameArea(selectedAreaId, newName)
-                        onRename()
-                        showRenameDialog = false
-                    }
-                }) {
+                Button(
+                    onClick = {
+                        val newName = renameInputText.trim()
+                        if (newName.isNotEmpty()) {
+                            itemStorage.renameArea(selectedAreaId, newName)
+                            onRename()
+                            showRenameDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Text("저장")
                 }
             },
@@ -521,7 +648,8 @@ fun RoomMapTab(
 @Composable
 fun FavoritesTab(
     items: List<ItemRecord>,
-    onToggleFavorite: (String) -> Unit
+    onToggleFavorite: (String) -> Unit,
+    onDeleteItem: (String) -> Unit
 ) {
     val favorites = items.filter { it.isFavorite }
 
@@ -532,36 +660,44 @@ fun FavoritesTab(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("즐겨찾기 목록", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("즐겨찾기 목록", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
         if (favorites.isEmpty()) {
-            Text(
-                "즐겨찾기가 비어있습니다. 자주 찾는 물건 카드의 하트 버튼을 눌러 추가하세요.",
-                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                textAlign = TextAlign.Center,
-                color = Color.Gray
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 64.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FavoriteBorder,
+                    contentDescription = null,
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "즐겨찾기가 비어있습니다.",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "자주 찾는 물건 카드의 하트 버튼을 눌러 추가하세요.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF94A3B8),
+                    textAlign = TextAlign.Center
+                )
+            }
         } else {
             favorites.forEach { item ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(item.areaName, color = Color(0xFF0F766E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(item.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
-                        IconButton(onClick = { onToggleFavorite(item.id) }) {
-                            Icon(Icons.Default.Favorite, contentDescription = "해제", tint = Color.Red)
-                        }
-                    }
-                }
+                ItemRecordRow(
+                    item = item,
+                    onToggleFavorite = onToggleFavorite,
+                    onDeleteItem = onDeleteItem
+                )
             }
         }
     }
@@ -603,18 +739,27 @@ fun ChecklistTab(storage: PlatformStorage) {
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("외출 전 체크리스트", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("외출 전 체크리스트", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
+            TextField(
                 value = newItemText,
                 onValueChange = { newItemText = it },
-                label = { Text("준비물 추가") },
+                placeholder = { Text("준비물 추가...", color = Color(0xFF94A3B8)) },
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFFF1F5F9),
+                    unfocusedContainerColor = Color(0xFFF1F5F9),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = Color(0xFF4F46E5)
+                ),
                 modifier = Modifier.weight(1f)
             )
             Button(
@@ -626,20 +771,23 @@ fun ChecklistTab(storage: PlatformStorage) {
                         save()
                     }
                 },
-                modifier = Modifier.align(Alignment.CenterVertically)
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                modifier = Modifier.height(48.dp)
             ) {
-                Text("추가")
+                Text("추가", fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         items.forEachIndexed { idx, item ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -652,19 +800,27 @@ fun ChecklistTab(storage: PlatformStorage) {
                                 this[idx] = this[idx].copy(checked = checked)
                             }
                             save()
-                        }
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFF4F46E5),
+                            checkmarkColor = Color.White
+                        )
                     )
                     Text(
-                        item.name,
+                        text = item.name,
                         modifier = Modifier.weight(1f),
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = if (item.checked) Color(0xFF94A3B8) else Color(0xFF1E293B),
+                        style = androidx.compose.ui.text.TextStyle(
+                            textDecoration = if (item.checked) androidx.compose.ui.text.style.TextDecoration.LineThrough else androidx.compose.ui.text.style.TextDecoration.None
+                        )
                     )
                     IconButton(onClick = {
                         items = items.toMutableList().apply { removeAt(idx) }
                         save()
                     }) {
-                        Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color.Gray)
+                        Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color(0xFF94A3B8))
                     }
                 }
             }
@@ -676,6 +832,9 @@ fun ChecklistTab(storage: PlatformStorage) {
 fun StatsTab(itemStorage: ItemStorage) {
     val stats = itemStorage.getRecent7DaysStats()
     val totalCount = stats.values.sum()
+    
+    // Sort by item count descending for better readability
+    val sortedStats = stats.toList().sortedByDescending { it.second }
 
     Column(
         modifier = Modifier
@@ -684,60 +843,84 @@ fun StatsTab(itemStorage: ItemStorage) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("최근 7일간 등록 통계", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("최근 7일간 등록 통계", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("최근 7일간 등록된 물품", color = Color.Gray, fontSize = 13.sp)
-                Text("${totalCount}개", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                        )
+                    )
+                    .padding(20.dp)
+            ) {
+                Text("최근 7일간 등록된 물품", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Text("${totalCount}개", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 if (stats.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "가장 물품 등록이 활발한 구역: ${stats.maxByOrNull { it.value }?.key}",
                         fontSize = 13.sp,
-                        color = Color(0xFF0F766E),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 4.dp)
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
 
-        Text("구역별 등록 비중", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text("구역별 등록 비중", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
         if (stats.isEmpty()) {
-            Text(
-                "최근 7일 동안 새로 등록된 소지품 데이터가 없습니다.",
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                textAlign = TextAlign.Center,
-                color = Color.Gray
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+            ) {
+                Text(
+                    "최근 7일 동안 새로 등록된 소지품 데이터가 없습니다.",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+            }
         } else {
-            stats.forEach { (areaName, count) ->
+            sortedStats.forEach { (areaName, count) ->
                 val ratio = if (totalCount > 0) count.toFloat() / totalCount else 0f
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(areaName, fontWeight = FontWeight.Bold)
-                            Text("${count}개 (${(ratio * 100).toInt()}%)")
+                            Text(areaName, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), fontSize = 15.sp)
+                            Text(
+                                "${count}개 (${(ratio * 100).toInt()}%)",
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF4F46E5),
+                                fontSize = 14.sp
+                            )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         LinearProgressIndicator(
                             progress = { ratio },
-                            modifier = Modifier.fillMaxWidth().height(8.dp),
-                            color = Color(0xFF2563EB),
-                            trackColor = Color(0xFFE2E8F0),
+                            modifier = Modifier.fillMaxWidth().height(10.dp),
+                            color = Color(0xFF4F46E5),
+                            trackColor = Color(0xFFF1F5F9),
                             strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
                     }
@@ -763,7 +946,11 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFFEEF2FF), Color(0xFFE0F7FA))
+                )
+            )
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -771,56 +958,95 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // 로고 그래픽
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .padding(bottom = 8.dp)
+                        .background(Color(0xFFEEF2FF), shape = RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color(0xFF4F46E5),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
                 Text(
-                    text = "AIFinder 로그인",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "AIFinder",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF1E293B),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
                     text = "언제 어디서나 스마트한 물품 찾기",
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
                     color = Color(0xFF64748B),
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                OutlinedTextField(
+                // 텍스트 필드 현대화 (둥근 모서리, 부드러운 회색 배경, border 없는 깔끔한 스타일)
+                TextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("아이디") },
+                    placeholder = { Text("아이디", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Person, null, tint = Color(0xFF94A3B8)) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("비밀번호") },
+                    placeholder = { Text("비밀번호", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
 
                 if (errorMessage.isNotEmpty()) {
                     Text(
                         text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
+                        color = Color(0xFFEF4444),
                         fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
 
+                // 그라데이션 버튼
                 Button(
                     onClick = {
                         if (username.isEmpty() || password.isEmpty()) {
@@ -835,16 +1061,26 @@ fun LoginScreen(
                             errorMessage = "아이디 또는 비밀번호가 틀렸습니다."
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                 ) {
-                    Text("로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToRegister) {
-                    Text("계정이 없으신가요? 회원가입", color = Color(0xFF2563EB))
+                    Text("계정이 없으신가요? 회원가입", color = Color(0xFF4F46E5), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -867,7 +1103,11 @@ fun RegisterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFFEEF2FF), Color(0xFFE0F7FA))
+                )
+            )
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -875,69 +1115,124 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // 로고 그래픽
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .padding(bottom = 8.dp)
+                        .background(Color(0xFFEEF2FF), shape = RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color(0xFF4F46E5),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
                 Text(
-                    text = "AIFinder 회원가입",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "회원가입",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF1E293B),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = "새로운 계정을 생성하여 데이터를 동기화하세요",
-                    fontSize = 14.sp,
+                    text = "새로운 계정을 생성하여 데이터를 관리하세요",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
                     color = Color(0xFF64748B),
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("아이디 (영문/숫자)") },
+                    placeholder = { Text("아이디 (영문/숫자)", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Person, null, tint = Color(0xFF94A3B8)) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("이메일 주소") },
+                    placeholder = { Text("이메일 주소", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Email, null, tint = Color(0xFF94A3B8)) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("비밀번호") },
+                    placeholder = { Text("비밀번호", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    label = { Text("비밀번호 확인") },
+                    placeholder = { Text("비밀번호 확인", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF1F5F9),
+                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color(0xFF4F46E5)
+                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
 
                 if (errorMessage.isNotEmpty()) {
                     Text(
                         text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
+                        color = Color(0xFFEF4444),
                         fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
@@ -968,16 +1263,26 @@ fun RegisterScreen(
                             errorMessage = "이미 존재하는 아이디입니다."
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                 ) {
-                    Text("가입 및 로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("가입 및 로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onBackToLogin) {
-                    Text("이미 계정이 있으신가요? 로그인", color = Color(0xFF2563EB))
+                    Text("이미 계정이 있으신가요? 로그인", color = Color(0xFF4F46E5), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
