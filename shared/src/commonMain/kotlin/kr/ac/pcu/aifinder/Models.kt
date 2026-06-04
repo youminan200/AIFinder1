@@ -17,5 +17,14 @@ data class ItemRecord(
     val timestamp: Long,
     val photoUri: String?,
     val boundingBox: String?, // Format: "left,top,right,bottom"
-    var isFavorite: Boolean = false
+    var isFavorite: Boolean = false,
+    val userId: String? = null // Link items to logged-in user
+)
+
+@Serializable
+data class User(
+    val id: String,
+    val username: String,
+    val passwordHash: String,
+    val email: String
 )

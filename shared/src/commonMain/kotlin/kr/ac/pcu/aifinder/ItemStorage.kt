@@ -13,6 +13,8 @@ class ItemStorage(private val storage: PlatformStorage) {
     companion object {
         private const val KEY_ITEMS = "items_list"
         private const val KEY_AREAS = "areas_list"
+        private const val KEY_USERS = "users_list"
+        private const val KEY_CURRENT_USER = "current_user_session"
     }
 
     private val defaultAreas = listOf(
@@ -24,6 +26,52 @@ class ItemStorage(private val storage: PlatformStorage) {
         RoomArea(6, "창가 구역")
     )
 
+    // User authentication & Profile management
+    fun getUsers(): List<User> {
+        val rawJson = storage.getString(KEY_USERS, null) ?: return emptyList()
+        return try {
+            json.decodeFromString(ListSerializer(User.serializer()), rawJson)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveUsers(users: List<User>) {
+        val rawJson = json.encodeToString(ListSerializer(User.serializer()), users)
+        storage.putString(KEY_USERS, rawJson)
+    }
+
+    fun registerUser(user: User): Boolean {
+        val users = getUsers().toMutableList()
+        if (users.any { it.username.equals(user.username, ignoreCase = true) }) {
+            return false // Username already taken
+        }
+        users.add(user)
+        saveUsers(users)
+        return true
+    }
+
+    fun authenticate(username: String, passwordHash: String): User? {
+        return getUsers().firstOrNull { 
+            it.username.equals(username, ignoreCase = true) && it.passwordHash == passwordHash 
+        }
+    }
+
+    fun getCurrentUser(): User? {
+        val userId = storage.getString(KEY_CURRENT_USER, null) ?: return null
+        if (userId.isEmpty()) return null
+        return getUsers().firstOrNull { it.id == userId }
+    }
+
+    fun setCurrentUser(userId: String?) {
+        storage.putString(KEY_CURRENT_USER, userId ?: "")
+    }
+
+    fun logout() {
+        setCurrentUser(null)
+    }
+
+    // Room Area management
     fun getRoomAreas(): List<RoomArea> {
         val rawJson = storage.getString(KEY_AREAS, null) ?: return defaultAreas.also { saveRoomAreas(it) }
         return try {
@@ -51,23 +99,44 @@ class ItemStorage(private val storage: PlatformStorage) {
         saveItems(items)
     }
 
+    // Item Records segregated by User ID
     fun getItems(): List<ItemRecord> {
         val rawJson = storage.getString(KEY_ITEMS, null) ?: return emptyList()
-        return try {
+        val allItems = try {
             json.decodeFromString(ListSerializer(ItemRecord.serializer()), rawJson)
         } catch (e: Exception) {
             emptyList()
         }
+        val currentUser = getCurrentUser() ?: return emptyList()
+        return allItems.filter { it.userId == currentUser.id }
     }
 
     fun saveItems(items: List<ItemRecord>) {
-        val rawJson = json.encodeToString(ListSerializer(ItemRecord.serializer()), items)
-        storage.putString(KEY_ITEMS, rawJson)
+        // Load all items in raw storage
+        val rawJson = storage.getString(KEY_ITEMS, null) ?: "[]"
+        val allItems = try {
+            json.decodeFromString(ListSerializer(ItemRecord.serializer()), rawJson)
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        val currentUser = getCurrentUser()
+        val currentUserId = currentUser?.id
+
+        // Keep items belonging to other users, replace items belonging to current user
+        val otherUsersItems = allItems.filter { it.userId != currentUserId }
+        val combinedItems = items + otherUsersItems
+
+        val newRawJson = json.encodeToString(ListSerializer(ItemRecord.serializer()), combinedItems)
+        storage.putString(KEY_ITEMS, newRawJson)
     }
 
     fun addItem(item: ItemRecord) {
+        val currentUser = getCurrentUser()
+        val itemWithUser = item.copy(userId = currentUser?.id)
+
         val items = getItems().toMutableList()
-        items.add(0, item)
+        items.add(0, itemWithUser)
         saveItems(items)
     }
 

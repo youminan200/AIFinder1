@@ -28,6 +28,7 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
     val itemStorage = remember { ItemStorage(platformStorage) }
     val recommender = remember { AiFindRecommender() }
 
+    var currentUser by remember { mutableStateOf(itemStorage.getCurrentUser()) }
     var items by remember { mutableStateOf(itemStorage.getItems()) }
     var areas by remember { mutableStateOf(itemStorage.getRoomAreas()) }
     
@@ -43,7 +44,7 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
         areas = itemStorage.getRoomAreas()
     }
 
-    LaunchedEffect(refreshTrigger) {
+    LaunchedEffect(refreshTrigger, currentUser) {
         refreshData()
     }
 
@@ -57,26 +58,53 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
             onPrimary = Color.White
         )
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            "AIFinder (iOS & Android)", 
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1E293B)
-                        ) 
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.White
-                    ),
-                    actions = {
-                        IconButton(onClick = { refreshData() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "새로고침")
-                        }
+        val user = currentUser
+        if (user == null) {
+            var showRegister by remember { mutableStateOf(false) }
+            if (showRegister) {
+                RegisterScreen(
+                    itemStorage = itemStorage,
+                    onBackToLogin = { showRegister = false },
+                    onRegisterSuccess = { registeredUser ->
+                        currentUser = registeredUser
                     }
                 )
-            },
+            } else {
+                LoginScreen(
+                    itemStorage = itemStorage,
+                    onLoginSuccess = { loggedInUser ->
+                        currentUser = loggedInUser
+                    },
+                    onNavigateToRegister = { showRegister = true }
+                )
+            }
+        } else {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { 
+                            Text(
+                                "AIFinder", 
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E293B)
+                            ) 
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.White
+                        ),
+                        actions = {
+                            IconButton(onClick = { refreshData() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "새로고침")
+                            }
+                            IconButton(onClick = { 
+                                itemStorage.logout()
+                                currentUser = null
+                            }) {
+                                Icon(Icons.Default.ExitToApp, contentDescription = "로그아웃")
+                            }
+                        }
+                    )
+                },
             bottomBar = {
                 NavigationBar(
                     containerColor = Color.White
@@ -243,6 +271,7 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                 }
             )
         }
+      }
     }
 }
 
@@ -719,3 +748,238 @@ fun StatsTab(itemStorage: ItemStorage) {
 }
 
 data class ChecklistItem(val name: String, val checked: Boolean)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginScreen(
+    itemStorage: ItemStorage,
+    onLoginSuccess: (User) -> Unit,
+    onNavigateToRegister: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "AIFinder 로그인",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "언제 어디서나 스마트한 물품 찾기",
+                    fontSize = 14.sp,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("아이디") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("비밀번호") },
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        if (username.isEmpty() || password.isEmpty()) {
+                            errorMessage = "아이디와 비밀번호를 모두 입력하세요."
+                            return@Button
+                        }
+                        val user = itemStorage.authenticate(username, password)
+                        if (user != null) {
+                            itemStorage.setCurrentUser(user.id)
+                            onLoginSuccess(user)
+                        } else {
+                            errorMessage = "아이디 또는 비밀번호가 틀렸습니다."
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                ) {
+                    Text("로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = onNavigateToRegister) {
+                    Text("계정이 없으신가요? 회원가입", color = Color(0xFF2563EB))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegisterScreen(
+    itemStorage: ItemStorage,
+    onBackToLogin: () -> Unit,
+    onRegisterSuccess: (User) -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "AIFinder 회원가입",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "새로운 계정을 생성하여 데이터를 동기화하세요",
+                    fontSize = 14.sp,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("아이디 (영문/숫자)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("이메일 주소") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("비밀번호") },
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("비밀번호 확인") },
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                            errorMessage = "모든 빈칸을 입력해주세요."
+                            return@Button
+                        }
+                        if (password != confirmPassword) {
+                            errorMessage = "비밀번호가 일치하지 않습니다."
+                            return@Button
+                        }
+                        
+                        val newUser = User(
+                            id = "user_${getCurrentTimeMillis()}",
+                            username = username,
+                            passwordHash = password,
+                            email = email
+                        )
+                        
+                        val success = itemStorage.registerUser(newUser)
+                        if (success) {
+                            itemStorage.setCurrentUser(newUser.id)
+                            onRegisterSuccess(newUser)
+                        } else {
+                            errorMessage = "이미 존재하는 아이디입니다."
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                ) {
+                    Text("가입 및 로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = onBackToLogin) {
+                    Text("이미 계정이 있으신가요? 로그인", color = Color(0xFF2563EB))
+                }
+            }
+        }
+    }
+}
