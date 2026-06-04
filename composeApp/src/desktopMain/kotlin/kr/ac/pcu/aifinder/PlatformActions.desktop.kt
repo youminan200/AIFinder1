@@ -14,5 +14,9 @@ actual fun launchObjectDetectionCamera(context: Any?, onResult: (ItemRecord) -> 
         boundingBox = null,
         isFavorite = true
     )
+    // Add to storage so that UI can display it
+    val storage = ItemStorage(PlatformStorage(null))
+    storage.addItem(dummyItem)
+    
     onResult(dummyItem)
 }
