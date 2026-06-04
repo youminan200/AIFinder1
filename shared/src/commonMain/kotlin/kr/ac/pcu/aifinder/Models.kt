@@ -25,7 +25,7 @@ data class ItemRecord(
 data class User(
     val id: String,
     val username: String,
-    val passwordHash: String,
+    val passwordHash: String = "",
     val email: String
 )
 
