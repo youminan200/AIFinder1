@@ -3,7 +3,10 @@ import sqlite3
 import os
 
 app = Flask(__name__)
-DB_FILE = 'database.db'
+DB_FILE = os.environ.get('DATABASE_FILE', 'database.db')
+if os.path.exists('/data'):
+    DB_FILE = '/data/database.db'
+
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
