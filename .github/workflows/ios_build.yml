@@ -44,7 +44,8 @@ jobs:
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
-                   clean build
+                   ENABLE_USER_SCRIPT_SANDBOXING=NO \
+                   clean build > xcodebuild.log 2>&1 || (cat xcodebuild.log && exit 1)
 
     - name: Compress iosApp.app to zip
       run: |
