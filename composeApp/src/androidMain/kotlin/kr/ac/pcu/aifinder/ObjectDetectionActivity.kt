@@ -30,6 +30,9 @@ import kr.ac.pcu.aifinder.composeApp.databinding.ActivityObjectDetectionBinding
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ObjectDetectionActivity : AppCompatActivity() {
 
@@ -302,6 +305,15 @@ class ObjectDetectionActivity : AppCompatActivity() {
         )
 
         itemStorage.addItem(record)
+
+        // Trigger remote sync in the background so that camera-registered items are saved to the server DB
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                itemStorage.syncItemsRemote()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         Toast.makeText(this, "${itemName}이(가) ${selectedArea.name}에 등록되었습니다.", Toast.LENGTH_SHORT).show()
         setResult(RESULT_OK)
