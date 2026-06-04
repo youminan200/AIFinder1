@@ -51,6 +51,15 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
 
     LaunchedEffect(refreshTrigger, currentUser) {
         refreshData()
+        if (currentUser != null) {
+            // Background sync remote items on startup/session change
+            coroutineScope.launch {
+                val success = itemStorage.loadItemsRemote()
+                if (success) {
+                    refreshData()
+                }
+            }
+        }
     }
 
 
