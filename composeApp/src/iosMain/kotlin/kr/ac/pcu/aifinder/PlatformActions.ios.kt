@@ -4,7 +4,7 @@ import platform.UIKit.UIAlertController
 import platform.UIKit.UIAlertControllerStyleAlert
 import platform.UIKit.UIAlertAction
 import platform.UIKit.UIAlertActionStyleDefault
-import platform.UIApplication
+import platform.UIKit.UIApplication
 
 actual fun launchObjectDetectionCamera(context: Any?, onResult: (ItemRecord) -> Unit) {
     val record = ItemRecord(
