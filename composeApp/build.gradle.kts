@@ -14,17 +14,6 @@ kotlin {
     
     jvm("desktop")
     
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "composeApp"
-            isStatic = true
-            export(project(":shared"))
-        }
-    }
 
     sourceSets {
         commonMain.dependencies {
@@ -49,8 +38,6 @@ kotlin {
             implementation(libs.androidx.work.runtime.ktx)
         }
 
-        iosMain.dependencies {
-        }
 
         val desktopMain by getting {
             dependencies {
