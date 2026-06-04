@@ -1116,15 +1116,8 @@ fun LoginScreen(
                                     isLoading = false
                                     onLoginSuccess(remoteUser)
                                 } else {
-                                    // Fallback to local authentication in case offline
-                                    val localUser = itemStorage.authenticate(username, password)
                                     isLoading = false
-                                    if (localUser != null) {
-                                        itemStorage.setCurrentUser(localUser.id)
-                                        onLoginSuccess(localUser)
-                                    } else {
-                                        errorMessage = response.message ?: "로그인 정보가 틀렸습니다."
-                                    }
+                                    errorMessage = "서버 로그인 실패: ${response.message ?: "네트워크 상태나 서버 주소를 확인하세요."}"
                                 }
                             }
                         },
@@ -1382,15 +1375,8 @@ fun RegisterScreen(
                                     isLoading = false
                                     onRegisterSuccess(newUser)
                                 } else {
-                                    // Try fallback local registration
-                                    val successLocal = itemStorage.registerUser(newUser)
                                     isLoading = false
-                                    if (successLocal) {
-                                        itemStorage.setCurrentUser(newUser.id)
-                                        onRegisterSuccess(newUser)
-                                    } else {
-                                        errorMessage = response.message ?: "이미 존재하는 아이디입니다."
-                                    }
+                                    errorMessage = "서버 등록 실패: ${response.message ?: "네트워크 상태나 서버 주소를 확인하세요."}"
                                 }
                             }
                         },
