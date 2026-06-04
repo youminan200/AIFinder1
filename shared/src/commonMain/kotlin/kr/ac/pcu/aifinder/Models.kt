@@ -28,3 +28,16 @@ data class User(
     val passwordHash: String,
     val email: String
 )
+
+@Serializable
+data class SyncRequest(
+    val userId: String,
+    val items: List<ItemRecord>
+)
+
+@Serializable
+data class ServerResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val user: User? = null
+)

@@ -1,0 +1,78 @@
+<resources>
+    <string name="app_name">AIfinder</string>
+    <string name="action_settings">설정</string>
+    <string name="first_fragment_label">홈</string>
+    <string name="second_fragment_label">상세</string>
+    <string name="next">다음</string>
+    <string name="previous">이전</string>
+
+    <string name="home_title">내 방</string>
+    <string name="home_subtitle">물건 위치와 외출 준비를 한 화면에서 확인해요.</string>
+    <string name="search_hint">찾는 물건을 입력하세요</string>
+    <string name="edit_room_name">방 이름 수정</string>
+    <string name="room_name_hint">방 이름</string>
+    <string name="save">저장</string>
+
+    <string name="quick_actions_label">빠른 보기</string>
+    <string name="room_map_view">방 지도 보기</string>
+    <string name="photo_list_view">사진 목록 보기</string>
+    <string name="favorites_list">즐겨찾기 목록</string>
+    <string name="outing_checklist">외출전 체크리스트</string>
+    <string name="recent_week_stats">최근 7일 통계</string>
+    <string name="detail_back">홈으로</string>
+
+    <string name="room_map_subtitle">가구와 물건 위치를 방 지도에서 확인해요.</string>
+    <string name="room_map_instructions">가구 버튼을 눌러 추가하고, 드래그로 위치를 바꿔요. 가구를 탭하면 안에 있는 물건을 기록할 수 있어요.</string>
+    <string name="furniture_bed">침대</string>
+    <string name="furniture_desk">책상</string>
+    <string name="furniture_closet">옷장</string>
+    <string name="furniture_chair">의자</string>
+    <string name="furniture_shelf">선반</string>
+    <string name="furniture_item">가구</string>
+    <string name="reset_furniture">초기화</string>
+    <string name="delete_furniture">가구 삭제</string>
+    <string name="delete">삭제</string>
+    <string name="furniture_items_title">%1$s 안의 물건</string>
+    <string name="item_name_hint">물건 이름</string>
+    <string name="add_item">추가</string>
+    <string name="clear_items">비우기</string>
+    <string name="no_furniture_items">물건 없음</string>
+    <string name="furniture_inventory_title">가구별 물건</string>
+    <string name="no_furniture_title">가구가 없어요</string>
+    <string name="no_furniture_subtitle">위 버튼으로 가구를 추가한 뒤 물건을 기록하세요.</string>
+    <string name="room_photos_title">방 지도 사진</string>
+    <string name="no_room_photos_title">연결된 사진이 없어요</string>
+    <string name="no_room_photos_subtitle">사진 목록 보기에서 사진을 찍고 위치를 지정하면 여기에 보여요.</string>
+
+    <string name="photo_list_subtitle">사진마다 정확한 위치를 지정해서 나중에 바로 찾을 수 있어요.</string>
+    <string name="take_photo">사진 찍기</string>
+    <string name="photo_saved">사진이 목록에 추가됐어요.</string>
+    <string name="photo_cancelled">사진 촬영이 취소됐어요.</string>
+    <string name="camera_permission_needed">카메라 권한이 필요해요.</string>
+    <string name="camera_app_missing">실행할 수 있는 카메라 앱을 찾지 못했어요.</string>
+    <string name="camera_launch_failed">카메라를 여는 중 문제가 생겼어요.</string>
+    <string name="captured_photo_title">직접 찍은 사진</string>
+    <string name="captured_photo_subtitle">방 사진 기록으로 저장됐어요.</string>
+    <string name="photo_location_help">사진 카드의 위치 지정 버튼으로 책상, 옷장, 선반 같은 정확한 위치를 연결하세요.</string>
+    <string name="photo_location_label">위치: %1$s</string>
+    <string name="set_photo_location">위치 지정</string>
+    <string name="location_unknown">위치 미지정</string>
+    <string name="sample_photo_title">예시 사진 %1$d</string>
+
+    <string name="favorites_subtitle">자주 찾는 물건만 모아서 빠르게 확인해요.</string>
+    <string name="outing_checklist_subtitle">나가기 전에 챙길 물건을 체크해요.</string>
+    <string name="checklist_item_hint">체크할 물건</string>
+    <string name="add_checklist_item">체크리스트에 추가</string>
+    <string name="empty_checklist_title">체크리스트가 비었어요</string>
+    <string name="empty_checklist_subtitle">위 입력칸에 물건을 적고 추가하세요.</string>
+    <string name="week_stats_subtitle">최근 7일 동안 많이 찾은 물건과 구역이에요.</string>
+
+    <string name="filter_all">All</string>
+    <string name="filter_docs">Docs</string>
+    <string name="filter_images">Images</string>
+    <string name="filter_notes">Notes</string>
+    <string name="results_label">최근 찾은 물건</string>
+    <string name="empty_results">아직 맞는 물건이 없어요.</string>
+
+    <string name="lorem_ipsum">상세 화면</string>
+</resources>

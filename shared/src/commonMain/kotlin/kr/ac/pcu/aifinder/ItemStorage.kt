@@ -5,6 +5,8 @@ import kotlinx.serialization.builtins.ListSerializer
 
 class ItemStorage(private val storage: PlatformStorage) {
 
+    private val network = PlatformNetwork()
+
     private val json = Json { 
         ignoreUnknownKeys = true 
         coerceInputValues = true
@@ -169,5 +171,90 @@ class ItemStorage(private val storage: PlatformStorage) {
         val sevenDaysAgo = getCurrentTimeMillis() - (7 * 24 * 60 * 60 * 1000L)
         val recentItems = getItems().filter { it.timestamp >= sevenDaysAgo }
         return recentItems.groupBy { it.areaName }.mapValues { it.value.size }
+    }
+
+    // API URL configuration
+    fun getServerUrl(): String {
+        val saved = storage.getString("server_api_url", null) ?: ""
+        if (saved.isNotEmpty()) return saved
+        return "http://10.0.2.2:5000"
+    }
+
+    fun saveServerUrl(url: String) {
+        var formatted = url.trim()
+        if (formatted.isNotEmpty() && !formatted.startsWith("http://") && !formatted.startsWith("https://")) {
+            formatted = "http://$formatted"
+        }
+        storage.putString("server_api_url", formatted)
+    }
+
+    // Remote operations (suspend)
+    suspend fun registerUserRemote(user: User): ServerResponse {
+        val url = "${getServerUrl()}/register"
+        return try {
+            val jsonBody = json.encodeToString(User.serializer(), user)
+            val responseText = network.post(url, jsonBody)
+            json.decodeFromString(ServerResponse.serializer(), responseText)
+        } catch (e: Exception) {
+            ServerResponse(success = false, message = e.message ?: "네트워크 연결 실패")
+        }
+    }
+
+    suspend fun authenticateRemote(username: String, passwordHash: String): ServerResponse {
+        val url = "${getServerUrl()}/login"
+        return try {
+            val dummyUser = User(id = "", username = username, passwordHash = passwordHash, email = "")
+            val jsonBody = json.encodeToString(User.serializer(), dummyUser)
+            val responseText = network.post(url, jsonBody)
+            json.decodeFromString(ServerResponse.serializer(), responseText)
+        } catch (e: Exception) {
+            ServerResponse(success = false, message = e.message ?: "아이디 또는 비밀번호가 틀렸거나 서버가 닫혀있습니다.")
+        }
+    }
+
+    suspend fun syncItemsRemote(): Boolean {
+        val currentUser = getCurrentUser() ?: return false
+        val items = getItems()
+        val url = "${getServerUrl()}/items/sync"
+        return try {
+            val syncRequest = SyncRequest(userId = currentUser.id, items = items)
+            val jsonBody = json.encodeToString(SyncRequest.serializer(), syncRequest)
+            val responseText = network.post(url, jsonBody)
+            val response = json.decodeFromString(ServerResponse.serializer(), responseText)
+            response.success
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun loadItemsRemote(): Boolean {
+        val currentUser = getCurrentUser() ?: return false
+        val url = "${getServerUrl()}/items?userId=${currentUser.id}"
+        return try {
+            val responseText = network.get(url)
+            val remoteItems = json.decodeFromString(ListSerializer(ItemRecord.serializer()), responseText)
+            saveItemsLocalOnly(remoteItems)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun saveItemsLocalOnly(items: List<ItemRecord>) {
+        val rawJson = storage.getString(KEY_ITEMS, null) ?: "[]"
+        val allItems = try {
+            json.decodeFromString(ListSerializer(ItemRecord.serializer()), rawJson)
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        val currentUser = getCurrentUser()
+        val currentUserId = currentUser?.id
+
+        val otherUsersItems = allItems.filter { it.userId != currentUserId }
+        val combinedItems = items + otherUsersItems
+
+        val newRawJson = json.encodeToString(ListSerializer(ItemRecord.serializer()), combinedItems)
+        storage.putString(KEY_ITEMS, newRawJson)
     }
 }

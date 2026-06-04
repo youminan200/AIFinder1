@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +30,8 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
     val platformStorage = remember { PlatformStorage(platformContext) }
     val itemStorage = remember { ItemStorage(platformStorage) }
     val recommender = remember { AiFindRecommender() }
+
+    val coroutineScope = rememberCoroutineScope()
 
     var currentUser by remember { mutableStateOf(itemStorage.getCurrentUser()) }
     var items by remember { mutableStateOf(itemStorage.getItems()) }
@@ -159,6 +162,7 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                             onClick = { 
                                 launchObjectDetectionCamera(platformContext) {
                                     refreshData()
+                                    coroutineScope.launch { itemStorage.syncItemsRemote() }
                                 }
                             },
                             shape = RoundedCornerShape(16.dp),
@@ -199,20 +203,26 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                             onToggleFavorite = { id ->
                                 itemStorage.toggleFavorite(id)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                             },
                             onDeleteItem = { id ->
                                 itemStorage.deleteItem(id)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                             }
                         )
                         1 -> RoomMapTab(
                             areas = areas,
                             items = items,
                             itemStorage = itemStorage,
-                            onRename = { refreshData() },
+                            onRename = { 
+                                refreshData() 
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
+                            },
                             onDeleteItem = { id ->
                                 itemStorage.deleteItem(id)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                             }
                         )
                         2 -> FavoritesTab(
@@ -220,10 +230,12 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                             onToggleFavorite = { id ->
                                 itemStorage.toggleFavorite(id)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                             },
                             onDeleteItem = { id ->
                                 itemStorage.deleteItem(id)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                             }
                         )
                         3 -> ChecklistTab(platformStorage)
@@ -285,6 +297,7 @@ fun App(platformContext: Any? = null, refreshTrigger: Int = 0) {
                                 )
                                 itemStorage.addItem(record)
                                 refreshData()
+                                coroutineScope.launch { itemStorage.syncItemsRemote() }
                                 newItemName = ""
                                 showAddItemDialog = false
                             }
@@ -942,6 +955,13 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+    
+    // Server API URL state
+    var serverUrl by remember { mutableStateOf(itemStorage.getServerUrl()) }
+    var showServerConfig by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -997,7 +1017,7 @@ fun LoginScreen(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF64748B),
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
 
                 // 텍스트 필드 현대화 (둥근 모서리, 부드러운 회색 배경, border 없는 깔끔한 스타일)
@@ -1006,6 +1026,7 @@ fun LoginScreen(
                     onValueChange = { username = it },
                     placeholder = { Text("아이디", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Person, null, tint = Color(0xFF94A3B8)) },
                     shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
@@ -1023,6 +1044,7 @@ fun LoginScreen(
                     onValueChange = { password = it },
                     placeholder = { Text("비밀번호", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     shape = RoundedCornerShape(16.dp),
@@ -1042,45 +1064,111 @@ fun LoginScreen(
                         color = Color(0xFFEF4444),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = 16.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
 
                 // 그라데이션 버튼
-                Button(
-                    onClick = {
-                        if (username.isEmpty() || password.isEmpty()) {
-                            errorMessage = "아이디와 비밀번호를 모두 입력하세요."
-                            return@Button
-                        }
-                        val user = itemStorage.authenticate(username, password)
-                        if (user != null) {
-                            itemStorage.setCurrentUser(user.id)
-                            onLoginSuccess(user)
-                        } else {
-                            errorMessage = "아이디 또는 비밀번호가 틀렸습니다."
-                        }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = PaddingValues(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                ) {
-                    Text("로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp).padding(bottom = 8.dp),
+                        color = Color(0xFF4F46E5)
+                    )
+                } else {
+                    Button(
+                        onClick = {
+                            if (username.isEmpty() || password.isEmpty()) {
+                                errorMessage = "아이디와 비밀번호를 모두 입력하세요."
+                                return@Button
+                            }
+                            
+                            // Save URL configuration first
+                            itemStorage.saveServerUrl(serverUrl)
+
+                            isLoading = true
+                            errorMessage = ""
+                            coroutineScope.launch {
+                                // Try remote authentication
+                                val response = itemStorage.authenticateRemote(username, password)
+                                if (response.success && response.user != null) {
+                                    val remoteUser = response.user!!
+                                    val localUsers = itemStorage.getUsers().toMutableList()
+                                    if (!localUsers.any { it.id == remoteUser.id }) {
+                                        localUsers.add(remoteUser)
+                                        itemStorage.saveUsers(localUsers)
+                                    }
+                                    
+                                    itemStorage.setCurrentUser(remoteUser.id)
+                                    
+                                    // Load items from remote DB to Local storage
+                                    itemStorage.loadItemsRemote()
+                                    
+                                    isLoading = false
+                                    onLoginSuccess(remoteUser)
+                                } else {
+                                    // Fallback to local authentication in case offline
+                                    val localUser = itemStorage.authenticate(username, password)
+                                    isLoading = false
+                                    if (localUser != null) {
+                                        itemStorage.setCurrentUser(localUser.id)
+                                        onLoginSuccess(localUser)
+                                    } else {
+                                        errorMessage = response.message ?: "로그인 정보가 틀렸습니다."
+                                    }
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        contentPadding = PaddingValues(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                    ) {
+                        Text("로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                TextButton(onClick = onNavigateToRegister) {
+                TextButton(onClick = onNavigateToRegister, enabled = !isLoading) {
                     Text("계정이 없으신가요? 회원가입", color = Color(0xFF4F46E5), fontWeight = FontWeight.SemiBold)
+                }
+
+                // 서버 연결 설정 접기/펴기
+                TextButton(onClick = { showServerConfig = !showServerConfig }, enabled = !isLoading) {
+                    Text(
+                        if (showServerConfig) "서버 설정 닫기 ▲" else "서버 설정 열기 ▼",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp
+                    )
+                }
+
+                if (showServerConfig) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        placeholder = { Text("http://192.168.0.X:5000", color = Color(0xFF94A3B8)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = Color(0xFF4F46E5)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
+                    )
                 }
             }
         }
@@ -1099,6 +1187,12 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+
+    var serverUrl by remember { mutableStateOf(itemStorage.getServerUrl()) }
+    var showServerConfig by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -1154,7 +1248,7 @@ fun RegisterScreen(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF64748B),
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
 
                 TextField(
@@ -1162,6 +1256,7 @@ fun RegisterScreen(
                     onValueChange = { username = it },
                     placeholder = { Text("아이디 (영문/숫자)", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Person, null, tint = Color(0xFF94A3B8)) },
                     shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
@@ -1179,6 +1274,7 @@ fun RegisterScreen(
                     onValueChange = { email = it },
                     placeholder = { Text("이메일 주소", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Email, null, tint = Color(0xFF94A3B8)) },
                     shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
@@ -1196,6 +1292,7 @@ fun RegisterScreen(
                     onValueChange = { password = it },
                     placeholder = { Text("비밀번호", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     shape = RoundedCornerShape(16.dp),
@@ -1214,6 +1311,7 @@ fun RegisterScreen(
                     onValueChange = { confirmPassword = it },
                     placeholder = { Text("비밀번호 확인", color = Color(0xFF94A3B8)) },
                     singleLine = true,
+                    enabled = !isLoading,
                     leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF94A3B8)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     shape = RoundedCornerShape(16.dp),
@@ -1233,56 +1331,110 @@ fun RegisterScreen(
                         color = Color(0xFFEF4444),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = 16.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
 
-                Button(
-                    onClick = {
-                        if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                            errorMessage = "모든 빈칸을 입력해주세요."
-                            return@Button
-                        }
-                        if (password != confirmPassword) {
-                            errorMessage = "비밀번호가 일치하지 않습니다."
-                            return@Button
-                        }
-                        
-                        val newUser = User(
-                            id = "user_${getCurrentTimeMillis()}",
-                            username = username,
-                            passwordHash = password,
-                            email = email
-                        )
-                        
-                        val success = itemStorage.registerUser(newUser)
-                        if (success) {
-                            itemStorage.setCurrentUser(newUser.id)
-                            onRegisterSuccess(newUser)
-                        } else {
-                            errorMessage = "이미 존재하는 아이디입니다."
-                        }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = PaddingValues(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                ) {
-                    Text("가입 및 로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp).padding(bottom = 8.dp),
+                        color = Color(0xFF4F46E5)
+                    )
+                } else {
+                    Button(
+                        onClick = {
+                            if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                                errorMessage = "모든 빈칸을 입력해주세요."
+                                return@Button
+                            }
+                            if (password != confirmPassword) {
+                                errorMessage = "비밀번호가 일치하지 않습니다."
+                                return@Button
+                            }
+
+                            itemStorage.saveServerUrl(serverUrl)
+                            isLoading = true
+                            errorMessage = ""
+
+                            val newUser = User(
+                                id = "user_${getCurrentTimeMillis()}",
+                                username = username,
+                                passwordHash = password,
+                                email = email
+                            )
+
+                            coroutineScope.launch {
+                                // Try remote registration first
+                                val response = itemStorage.registerUserRemote(newUser)
+                                if (response.success) {
+                                    itemStorage.registerUser(newUser)
+                                    itemStorage.setCurrentUser(newUser.id)
+                                    isLoading = false
+                                    onRegisterSuccess(newUser)
+                                } else {
+                                    // Try fallback local registration
+                                    val successLocal = itemStorage.registerUser(newUser)
+                                    isLoading = false
+                                    if (successLocal) {
+                                        itemStorage.setCurrentUser(newUser.id)
+                                        onRegisterSuccess(newUser)
+                                    } else {
+                                        errorMessage = response.message ?: "이미 존재하는 아이디입니다."
+                                    }
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        contentPadding = PaddingValues(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4))
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                    ) {
+                        Text("가입 및 로그인", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                TextButton(onClick = onBackToLogin) {
+                TextButton(onClick = onBackToLogin, enabled = !isLoading) {
                     Text("이미 계정이 있으신가요? 로그인", color = Color(0xFF4F46E5), fontWeight = FontWeight.SemiBold)
+                }
+
+                // 서버 연결 설정 접기/펴기
+                TextButton(onClick = { showServerConfig = !showServerConfig }, enabled = !isLoading) {
+                    Text(
+                        if (showServerConfig) "서버 설정 닫기 ▲" else "서버 설정 열기 ▼",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp
+                    )
+                }
+
+                if (showServerConfig) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        placeholder = { Text("http://192.168.0.X:5000", color = Color(0xFF94A3B8)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = Color(0xFF4F46E5)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
+                    )
                 }
             }
         }
