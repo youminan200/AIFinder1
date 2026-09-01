@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun App() {
@@ -41,7 +42,7 @@ fun App() {
                 
                 Card(
                     elevation = 4.dp,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(150.dp)
                 ) {
                     Column(
@@ -64,7 +65,7 @@ fun App() {
                 Button(
                     onClick = { count++ },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF6200EE))
                 ) {
                     Text("응원 버튼 누르기!", color = Color.White, fontSize = 18.sp)
