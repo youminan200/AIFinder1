@@ -26,32 +26,34 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x gradlew
 
-    - name: Build iOS App
+    - name: Build Kotlin Framework
+      run: ./gradlew :shared:assembleRelease --no-daemon
+
+    - name: Build iOS App (Skip Gradle Embedding)
       run: |
-        # 1. Build the Kotlin framework first
-        ./gradlew :shared:assembleRelease --no-daemon
-        
         cd iosApp
-        # 2. Build the Xcode project with specific flags to ignore signing and use the right arch
+        # 우리는 이미 위에서 프레임워크를 빌드했으므로, 
+        # Xcode가 Gradle을 다시 호출하지 않도록 설정하여 충돌을 피합니다.
         xcodebuild -project iosApp.xcodeproj \
                    -scheme iosApp \
                    -configuration Release \
                    -sdk iphoneos \
                    -derivedDataPath build \
-                   ARCHS=arm64 \
-                   ONLY_ACTIVE_ARCH=NO \
-                   ENABLE_USER_SCRIPT_SANDBOXING=NO \
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
                    AD_HOC_CODE_SIGNING_ALLOWED=YES \
+                   ENABLE_USER_SCRIPT_SANDBOXING=NO \
                    COMPILER_INDEX_STORE_ENABLE=NO \
+                   -destination 'generic/platform=iOS' \
                    clean build
 
-    - name: Package .ipa
+    - name: Package .ipa (Manual)
       run: |
         mkdir -p Payload
-        cp -r iosApp/build/Build/Products/Release-iphoneos/iosApp.app Payload/
+        # 빌드된 .app 파일을 Payload 폴더로 복사
+        APP_PATH=$(find iosApp/build -name "*.app" | head -n 1)
+        cp -r "$APP_PATH" Payload/
         zip -r iosApp.ipa Payload
         
     - name: Upload iOS IPA Artifact
