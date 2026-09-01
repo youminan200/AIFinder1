@@ -3,12 +3,11 @@ name: iOS Build (GitHub Actions)
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build iOS IPA
     runs-on: macos-latest
 
     steps:
