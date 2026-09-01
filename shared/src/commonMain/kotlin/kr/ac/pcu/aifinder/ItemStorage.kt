@@ -53,6 +53,13 @@ class ItemStorage(private val storage: PlatformStorage) {
         return true
     }
 
+    fun saveOrUpdateUser(user: User) {
+        val users = getUsers().toMutableList()
+        users.removeAll { it.id == user.id || it.username.equals(user.username, ignoreCase = true) }
+        users.add(user)
+        saveUsers(users)
+    }
+
     fun authenticate(username: String, passwordHash: String): User? {
         return getUsers().firstOrNull { 
             it.username.equals(username, ignoreCase = true) && it.passwordHash == passwordHash 
@@ -71,6 +78,14 @@ class ItemStorage(private val storage: PlatformStorage) {
 
     fun logout() {
         setCurrentUser(null)
+    }
+
+    fun isAutoLoginEnabled(): Boolean {
+        return storage.getString("auto_login_enabled", "true") == "true"
+    }
+
+    fun setAutoLoginEnabled(enabled: Boolean) {
+        storage.putString("auto_login_enabled", enabled.toString())
     }
 
     // Room Area management
@@ -175,9 +190,7 @@ class ItemStorage(private val storage: PlatformStorage) {
 
     // API URL configuration
     fun getServerUrl(): String {
-        val saved = storage.getString("server_api_url", null) ?: ""
-        if (saved.isNotEmpty()) return saved
-        return "http://10.0.2.2:5000"
+        return "https://pcu-aifinder-2026.loca.lt"
     }
 
     fun saveServerUrl(url: String) {
@@ -188,56 +201,33 @@ class ItemStorage(private val storage: PlatformStorage) {
         storage.putString("server_api_url", formatted)
     }
 
-    // Remote operations (suspend)
+    // Remote operations (suspend) using Firebase
     suspend fun registerUserRemote(user: User): ServerResponse {
-        val url = "${getServerUrl()}/register"
-        return try {
-            val jsonBody = json.encodeToString(User.serializer(), user)
-            val responseText = network.post(url, jsonBody)
-            json.decodeFromString(ServerResponse.serializer(), responseText)
-        } catch (e: Exception) {
-            ServerResponse(success = false, message = e.message ?: "네트워크 연결 실패")
-        }
+        return FirebaseBackend.registerUser(user)
     }
 
     suspend fun authenticateRemote(username: String, passwordHash: String): ServerResponse {
-        val url = "${getServerUrl()}/login"
-        return try {
-            val dummyUser = User(id = "", username = username, passwordHash = passwordHash, email = "")
-            val jsonBody = json.encodeToString(User.serializer(), dummyUser)
-            val responseText = network.post(url, jsonBody)
-            json.decodeFromString(ServerResponse.serializer(), responseText)
-        } catch (e: Exception) {
-            ServerResponse(success = false, message = e.message ?: "아이디 또는 비밀번호가 틀렸거나 서버가 닫혀있습니다.")
-        }
+        return FirebaseBackend.authenticate(username, passwordHash)
+    }
+
+    suspend fun updateUserProfileRemote(user: User): Boolean {
+        return FirebaseBackend.updateUserProfile(user)
     }
 
     suspend fun syncItemsRemote(): Boolean {
         val currentUser = getCurrentUser() ?: return false
         val items = getItems()
-        val url = "${getServerUrl()}/items/sync"
-        return try {
-            val syncRequest = SyncRequest(userId = currentUser.id, items = items)
-            val jsonBody = json.encodeToString(SyncRequest.serializer(), syncRequest)
-            val responseText = network.post(url, jsonBody)
-            val response = json.decodeFromString(ServerResponse.serializer(), responseText)
-            response.success
-        } catch (e: Exception) {
-            false
-        }
+        return FirebaseBackend.syncItems(currentUser.id, items)
     }
 
     suspend fun loadItemsRemote(): Boolean {
         val currentUser = getCurrentUser() ?: return false
-        val url = "${getServerUrl()}/items?userId=${currentUser.id}"
-        return try {
-            val responseText = network.get(url)
-            val remoteItems = json.decodeFromString(ListSerializer(ItemRecord.serializer()), responseText)
+        val remoteItems = FirebaseBackend.loadItems(currentUser.id)
+        if (remoteItems.isNotEmpty()) {
             saveItemsLocalOnly(remoteItems)
-            true
-        } catch (e: Exception) {
-            false
+            return true
         }
+        return false
     }
 
     private fun saveItemsLocalOnly(items: List<ItemRecord>) {

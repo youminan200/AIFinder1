@@ -1,15 +1,14 @@
 package kr.ac.pcu.aifinder
 
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 
 class OutingAlarmReceiver : BroadcastReceiver() {
 
@@ -19,34 +18,40 @@ class OutingAlarmReceiver : BroadcastReceiver() {
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "outing_checklist_channel"
         const val KEY_CHECKLIST = "checklist_items"
+        const val PREFS_NAME = "item_storage_records"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             ACTION_OUTING_ALARM -> {
                 showOutingChecklistNotification(context)
+                rescheduleNextAlarm(context, forceTomorrow = true)
             }
             ACTION_MARK_ALL_COMPLETED -> {
                 markAllChecklistCompleted(context)
+            }
+            Intent.ACTION_BOOT_COMPLETED,
+            "android.intent.action.LOCKED_BOOT_COMPLETED",
+            "android.intent.action.QUICKBOOT_POWERON" -> {
+                rescheduleNextAlarm(context, forceTomorrow = false)
             }
         }
     }
 
     private fun showOutingChecklistNotification(context: Context) {
-        // Read checklist items from SharedPreferences
-        val prefs = context.getSharedPreferences("outing_checklist", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val stored = prefs.getString(KEY_CHECKLIST, null)
         
         val items = if (stored.isNullOrBlank()) {
             listOf("휴대폰", "지갑", "현관 열쇠", "우산", "보조 배터리")
-                .map { ChecklistItem(it, false) }
+                .map { ChecklistItem(name = it, checked = false) }
         } else {
             stored.split("|")
                 .filter { it.isNotBlank() }
                 .mapNotNull { encoded ->
                     val parts = encoded.split("^")
-                    val label = Uri.decode(parts.getOrNull(0).orEmpty())
-                    if (label.isBlank()) null else ChecklistItem(label, parts.getOrNull(1) == "1")
+                    val label = parts.getOrNull(0).orEmpty()
+                    if (label.isBlank()) null else ChecklistItem(name = label, checked = parts.getOrNull(1) == "1")
                 }
         }
 
@@ -55,7 +60,7 @@ class OutingAlarmReceiver : BroadcastReceiver() {
         // If all items are checked, no notification is needed!
         if (uncheckedItems.isEmpty()) return
 
-        val uncheckedNames = uncheckedItems.joinToString(", ") { it.label }
+        val uncheckedNames = uncheckedItems.joinToString(", ") { it.name }
         val message = "외출 전 챙기셨나요? 아직 완료되지 않은 물품이 있습니다: $uncheckedNames"
 
         // Create notification channel
@@ -98,19 +103,19 @@ class OutingAlarmReceiver : BroadcastReceiver() {
     }
 
     private fun markAllChecklistCompleted(context: Context) {
-        val prefs = context.getSharedPreferences("outing_checklist", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val stored = prefs.getString(KEY_CHECKLIST, null) ?: return
 
         val items = stored.split("|")
             .filter { it.isNotBlank() }
             .mapNotNull { encoded ->
                 val parts = encoded.split("^")
-                val label = Uri.decode(parts.getOrNull(0).orEmpty())
-                if (label.isBlank()) null else ChecklistItem(label, true) // Force check true
+                val label = parts.getOrNull(0).orEmpty()
+                if (label.isBlank()) null else ChecklistItem(name = label, checked = true)
             }
 
         val updatedString = items.joinToString("|") { item ->
-            "${Uri.encode(item.label)}^1"
+            "${item.name}^1"
         }
         prefs.edit().putString(KEY_CHECKLIST, updatedString).apply()
 
@@ -132,5 +137,54 @@ class OutingAlarmReceiver : BroadcastReceiver() {
         }
     }
 
-    private data class ChecklistItem(val label: String, val checked: Boolean)
+    private fun rescheduleNextAlarm(context: Context, forceTomorrow: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val enabled = prefs.getString("outing_alarm_enabled", "0") == "1"
+        if (!enabled) return
+
+        val hour = prefs.getString("outing_alarm_hour", "8")?.toIntOrNull() ?: 8
+        val minute = prefs.getString("outing_alarm_minute", "0")?.toIntOrNull() ?: 0
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, OutingAlarmReceiver::class.java).apply {
+            action = ACTION_OUTING_ALARM
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 100, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val now = java.util.Calendar.getInstance()
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val nowHour = now.get(java.util.Calendar.HOUR_OF_DAY)
+        val nowMinute = now.get(java.util.Calendar.MINUTE)
+        val isPast = hour < nowHour || (hour == nowHour && minute < nowMinute)
+        if (forceTomorrow || isPast) {
+            calendar.add(java.util.Calendar.DATE, 1)
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            }
+            android.util.Log.d("OutingAlarmReceiver", "Rescheduled outing alarm at $hour:$minute (tomorrow=$forceTomorrow)")
+        } catch (e: SecurityException) {
+            android.util.Log.e("OutingAlarmReceiver", "SecurityException scheduling alarm: ${e.message}")
+        }
+    }
 }

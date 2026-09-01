@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_app"
+    android:background="#F8FAFC"
     tools:context=".ObjectDetectionActivity">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -19,7 +19,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="?attr/homeAsUpIndicator"
             app:title="AI 물건 감지 및 등록"
-            app:titleTextColor="@color/text_primary" />
+            app:titleTextColor="#1E293B" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -31,26 +31,26 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
-            <!-- Photo view card -->
+            <!-- 1. Photo Section -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="320dp"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="@color/outline_soft"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/white">
+                android:layout_height="280dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="2dp"
+                app:strokeColor="#E2E8F0"
+                app:strokeWidth="1dp">
 
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
-
-                    <kr.ac.pcu.aifinder.ObjectOverlayView
-                        android:id="@+id/object_overlay_view"
+                    <ImageView
+                        android:id="@+id/photo_image_view"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:background="#F1F5F9" />
                     <ProgressBar
                         android:id="@+id/progress_bar"
                         android:layout_width="wrap_content"
@@ -60,75 +60,137 @@
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+                <LinearLayout
+                    android:id="@+id/extra_photos_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="80dp"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/add_photo_button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="사진 추가 촬영"
+                app:icon="@android:drawable/ic_menu_camera"
+                app:cornerRadius="12dp"
+                app:strokeColor="#CBD5E1"
+                app:iconTint="#64748B"
+                android:textColor="#64748B"/>
+
+            <!-- 2. Name Input & Voice (STT) -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="물건 이름 (AI 감지)"
+                android:textColor="#334155"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/name_input_layout"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/name_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="예: 에어팟, 비타민"
+                        android:inputType="text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_voice_input"
+                    style="@style/Widget.MaterialComponents.Button.TextButton.Icon"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    app:icon="@android:drawable/ic_btn_speak_now"
+                    app:iconSize="28dp"
+                    app:iconTint="#2563EB" />
+            </LinearLayout>
+
+            <!-- 3. Smart Tags -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="감지된 물건 이름 (수정 가능)"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
+                android:text="스마트 태그 (#분류)"
+                android:textColor="#334155"
                 android:textStyle="bold" />
 
-            <!-- Input Box -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/name_input_layout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                app:boxBackgroundColor="@color/white"
-                app:boxCornerRadiusBottomEnd="8dp"
-                app:boxCornerRadiusBottomStart="8dp"
-                app:boxCornerRadiusTopEnd="8dp"
-                app:boxCornerRadiusTopStart="8dp">
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/name_edit_text"
+                    android:id="@+id/tag_edit_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="물건 이름"
-                    android:inputType="text"
-                    android:maxLines="1" />
+                    android:hint="#전자기기 #자주사용 #중요" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Instructions for RoomMapView -->
+            <!-- 4. RoomMapView (Visual Pinpoint) -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="보관할 위치 구역 선택"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
+                android:layout_marginTop="24dp"
+                android:text="보관 위치 핀포인트"
+                android:textColor="#334155"
                 android:textStyle="bold" />
 
-            <!-- RoomMapView card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="320dp"
+                android:layout_height="300dp"
                 android:layout_marginTop="8dp"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="@color/outline_soft"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/white">
+                app:cardCornerRadius="20dp"
+                app:strokeColor="#E2E8F0"
+                app:strokeWidth="1dp">
 
                 <kr.ac.pcu.aifinder.RoomMapView
                     android:id="@+id/room_map_view"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="8dp" />
+                    android:layout_height="match_parent" />
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Register Button -->
+            <!-- 5. Register Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/register_button"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="16dp"
-                android:text="이 위치에 물건 등록"
-                android:textSize="16sp"
+                android:layout_height="64dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="40dp"
+                android:text="스마트 등록 완료"
+                android:textSize="18sp"
                 android:textStyle="bold"
-                app:cornerRadius="8dp" />
+                android:backgroundTint="#2563EB"
+                app:cornerRadius="16dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -23,8 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AIfinder"
-// include(":app") // Legacy Android application disabled in favor of KMP composeApp
+include(":app")
 include(":shared")
-include(":composeApp")
-
-

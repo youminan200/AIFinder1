@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string
 import sqlite3
 import os
 
@@ -163,6 +163,62 @@ def sync_items():
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         conn.close()
+
+@app.route('/admin', methods=['GET'])
+def admin_dashboard():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, password_hash, email FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AIfinder DB Admin</title>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 40px; }
+            h1 { color: #38bdf8; text-align: center; margin-bottom: 30px; font-weight: 600; }
+            table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+            th, td { padding: 16px 20px; text-align: left; }
+            th { background: #0ea5e9; color: white; text-transform: uppercase; font-size: 14px; letter-spacing: 0.05em; }
+            tr:nth-child(even) { background: #0f172a; }
+            tr:hover { background: #334155; }
+            td { border-bottom: 1px solid #334155; }
+            .badge { background: #10b981; color: white; padding: 4px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h1>🛡️ AIfinder Database Viewer 🛡️</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>DB 고유 ID</th>
+                    <th>가입된 아이디 (Username)</th>
+                    <th>비밀번호 (Password)</th>
+                    <th>상태</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td style="color: #94a3b8; font-family: monospace;">{{ user.id }}</td>
+                    <td style="color: #38bdf8; font-weight: bold;">{{ user.username }}</td>
+                    <td style="color: #f472b6;">{{ user.password_hash }}</td>
+                    <td><span class="badge">가입 완료</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #94a3b8;">아직 가입된 유저가 없습니다. 앱에서 회원가입을 진행해주세요!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    '''
+    return render_template_string(html, users=users)
 
 if __name__ == '__main__':
     init_db()

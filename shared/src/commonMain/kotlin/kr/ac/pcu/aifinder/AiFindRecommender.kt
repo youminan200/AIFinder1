@@ -67,15 +67,7 @@ class AiFindRecommender {
                 score += 10
             }
 
-            // Recency Bonus
-            // In KMP, we can use System time via expect/actual or standard system time APIs.
-            // However, System.currentTimeMillis() works fine on JVM (Android) but on Kotlin/Native (iOS) we should fetch epoch time.
-            // For general logic, a basic mock system time or platform-agnostic clock is ideal.
-            // Let's use simple mock or ignore recency bonus, or compute via expect val.
-            // Let's keep it simple: we can omit the recency bonus or use it if we define expect val currentTimeMillis.
-            // Actually, we can define expect fun getEpochTime(): Long and implement it platform-specifically.
-            // Let's define an expect/actual epoch time or use standard Kotlin Native time features.
-            // We can define "expect fun getCurrentTimeMillis(): Long" in commonMain, and implement in android/ios.
+
             val isRecent = (getCurrentTimeMillis() - item.timestamp) < (24 * 60 * 60 * 1000L) // 24 hours
             if (isRecent) score += 5
 

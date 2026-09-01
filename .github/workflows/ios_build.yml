@@ -1,0 +1,41 @@
+name: iOS Build (GitHub Actions)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Make gradlew executable
+      run: chmod +x gradlew
+
+    - name: Build iOS Shared Framework (Release)
+      run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon
+
+    # Note: Building a full .ipa requires code signing which needs Apple Developer certs.
+    # We build the framework to ensure the code is correct for iOS.
+    
+    - name: Upload iOS Framework Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: shared-ios-framework
+        path: shared/build/bin/iosArm64/releaseFramework/
+        retention-days: 7

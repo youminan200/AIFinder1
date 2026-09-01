@@ -20,37 +20,61 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.label.ImageLabeling
-import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
-import com.google.mlkit.vision.objects.ObjectDetection
-import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
+import androidx.lifecycle.lifecycleScope
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import kr.ac.pcu.aifinder.BuildConfig
 import kr.ac.pcu.aifinder.databinding.ActivityObjectDetectionBinding
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ObjectDetectionActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityObjectDetectionBinding
     private lateinit var itemStorage: ItemStorage
     private var photoUri: Uri? = null
+    private var currentCaptureUri: Uri? = null
+    private val additionalPhotoUris = mutableListOf<Uri>()
     private var capturedBitmap: Bitmap? = null
-    private var currentResults: List<ObjectOverlayView.DetectionResult> = emptyList()
 
     // Register camera launcher
     private val takePictureLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success) {
-                photoUri?.let { uri ->
-                    processCapturedPhoto(uri)
+                currentCaptureUri?.let { uri ->
+                    if (photoUri == null) {
+                        photoUri = uri
+                        processCapturedPhoto(uri)
+                    } else {
+                        additionalPhotoUris.add(uri)
+                        addExtraPhotoToUI(uri)
+                    }
                 }
             } else {
-                Toast.makeText(this, "사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
-                finish()
+                if (photoUri == null) {
+                    Toast.makeText(this, "첫 사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Toast.makeText(this, "추가 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
+
+    private fun addExtraPhotoToUI(uri: Uri) {
+        val imageView = android.widget.ImageView(this).apply {
+            val size = (80 * resources.displayMetrics.density).toInt()
+            layoutParams = android.widget.LinearLayout.LayoutParams(size, android.widget.LinearLayout.LayoutParams.MATCH_PARENT).apply {
+                marginEnd = (8 * resources.displayMetrics.density).toInt()
+            }
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            setImageURI(uri)
+        }
+        binding.extraPhotosContainer.addView(imageView)
+    }
 
     // Register permission launcher
     private val requestPermissionLauncher =
@@ -80,11 +104,12 @@ class ObjectDetectionActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
-        itemStorage = ItemStorage(this)
+        itemStorage = ItemStorage(PlatformStorage(this))
 
         setupRoomMapView()
 
         binding.registerButton.setOnClickListener { registerItem() }
+        binding.addPhotoButton.setOnClickListener { launchCamera() }
 
         // Start flow by checking camera permission
         checkCameraPermission()
@@ -102,13 +127,13 @@ class ObjectDetectionActivity : AppCompatActivity() {
 
     private fun launchCamera() {
         val photoFile = createPhotoFile()
-        photoUri = FileProvider.getUriForFile(
+        currentCaptureUri = FileProvider.getUriForFile(
             this,
             "$packageName.fileprovider",
             photoFile
         )
         try {
-            takePictureLauncher.launch(photoUri!!)
+            takePictureLauncher.launch(currentCaptureUri!!)
         } catch (e: Exception) {
             Toast.makeText(this, "카메라 앱 실행에 실패했습니다.", Toast.LENGTH_SHORT).show()
             finish()
@@ -134,14 +159,23 @@ class ObjectDetectionActivity : AppCompatActivity() {
 
     private fun processCapturedPhoto(uri: Uri) {
         binding.progressBar.visibility = View.VISIBLE
-
-        // Load Bitmap
+        
+        // Correct orientation and load Bitmap
         capturedBitmap = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val originalBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri))
             } else {
                 MediaStore.Images.Media.getBitmap(contentResolver, uri)
             }.copy(Bitmap.Config.ARGB_8888, true)
+            
+            // Handle EXIF rotation
+            val rotation = getRotationFromExif(uri)
+            if (rotation != 0) {
+                val matrix = android.graphics.Matrix().apply { postRotate(rotation.toFloat()) }
+                Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true)
+            } else {
+                originalBitmap
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "이미지를 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
             binding.progressBar.visibility = View.GONE
@@ -149,126 +183,127 @@ class ObjectDetectionActivity : AppCompatActivity() {
             return
         }
 
+        binding.photoImageView.setImageBitmap(capturedBitmap)
+        binding.nameEditText.setText("AI가 물건을 분석 중입니다...")
+
         val bitmap = capturedBitmap ?: return
 
-        // Run ML Kit Object Detection
-        val objectDetectorOptions = ObjectDetectorOptions.Builder()
-            .setDetectorMode(ObjectDetectorOptions.SINGLE_IMAGE_MODE)
-            .enableMultipleObjects()
-            .enableClassification()
-            .build()
-        val detector = ObjectDetection.getClient(objectDetectorOptions)
-
-        val image = InputImage.fromBitmap(bitmap, 0)
-        detector.process(image)
-            .addOnSuccessListener { detectedObjects ->
-                if (detectedObjects.isEmpty()) {
-                    // No objects found, run full image labeling
-                    runFullImageLabeling(bitmap)
-                } else {
-                    // Objects found, run Image Labeling on each cropped area
-                    val labelerOptions = ImageLabelerOptions.Builder()
-                        .setConfidenceThreshold(0.4f)
-                        .build()
-                    val labeler = ImageLabeling.getClient(labelerOptions)
-
-                    val tasks = detectedObjects.map { obj ->
-                        val box = obj.boundingBox
-                        val left = box.left.coerceIn(0, bitmap.width)
-                        val top = box.top.coerceIn(0, bitmap.height)
-                        val right = box.right.coerceIn(0, bitmap.width)
-                        val bottom = box.bottom.coerceIn(0, bitmap.height)
-                        val w = (right - left).coerceAtLeast(1)
-                        val h = (bottom - top).coerceAtLeast(1)
-
-                        val crop = Bitmap.createBitmap(bitmap, left, top, w, h)
-                        val cropImage = InputImage.fromBitmap(crop, 0)
-
-                        labeler.process(cropImage).continueWith { cropTask ->
-                            val labels = cropTask.result ?: emptyList()
-                            val label = translateLabel(labels.maxByOrNull { it.confidence }?.text ?: "물건")
-                            val conf = labels.maxByOrNull { it.confidence }?.confidence ?: 0.5f
-                            ObjectOverlayView.DetectionResult(box, label, conf)
-                        }
+        lifecycleScope.launch {
+            try {
+                val models = listOf("gemini-2.5-flash", "gemini-3.5-flash", "gemini-1.5-flash-latest", "gemini-flash-latest")
+                val areas = itemStorage.getRoomAreas()
+                val areasText = areas.joinToString(", ") { "${it.id}(${it.name})" }
+                
+                val prompt = """
+                    이미지 분석 전문가로서 사진 속의 물건들을 파악하고 보관 위치를 추천해 주세요.
+                    
+                    반드시 아래의 JSON 형식으로만 답변하십시오. 다른 텍스트나 마크다운은 절대 포함하지 마십시오.
+                    
+                    {
+                      "items": "파악된 물건들의 이름을 쉼표로 구분한 문자열 (예: '안경, 케이스')",
+                      "areaId": "추천 구역의 ID 숫자 하나 (예: 3)"
                     }
+                    
+                    [사용 가능한 구역 목록]
+                    $areasText
+                    
+                    [주의사항]
+                    1. 가장 눈에 띄는 1~3개의 물건에 집중하세요.
+                    2. 반드시 위에서 제공한 구역 목록 중 하나를 선택하세요.
+                """.trimIndent()
 
-                    Tasks.whenAllComplete(tasks).addOnSuccessListener { completedTasks ->
-                        val results = completedTasks.mapNotNull {
-                            if (it.isSuccessful) it.result as? ObjectOverlayView.DetectionResult else null
+                var detectedText = ""
+                var lastError: Exception? = null
+                for (modelName in models) {
+                    try {
+                        val generativeModel = GenerativeModel(
+                            modelName = modelName,
+                            apiKey = BuildConfig.GEMINI_API_KEY
+                        )
+                        val response = generativeModel.generateContent(
+                            content {
+                                image(bitmap)
+                                text(prompt)
+                            }
+                        )
+                        val textResult = response.text?.trim()
+                        if (!textResult.isNullOrEmpty()) {
+                            detectedText = textResult
+                            android.util.Log.d("ObjectDetection", "Successfully detected using model: $modelName")
+                            break
                         }
-                        displayResults(bitmap, results)
+                    } catch (e: Exception) {
+                        android.util.Log.w("ObjectDetection", "Model $modelName failed: ${e.message}")
+                        lastError = e
                     }
                 }
-            }
-            .addOnFailureListener {
-                runFullImageLabeling(bitmap)
-            }
-    }
 
-    private fun runFullImageLabeling(bitmap: Bitmap) {
-        val labelerOptions = ImageLabelerOptions.Builder()
-            .setConfidenceThreshold(0.4f)
-            .build()
-        val labeler = ImageLabeling.getClient(labelerOptions)
-        val image = InputImage.fromBitmap(bitmap, 0)
+                if (detectedText.isEmpty() && lastError != null) {
+                    throw lastError
+                }
 
-        labeler.process(image)
-            .addOnSuccessListener { labels ->
-                val label = translateLabel(labels.maxByOrNull { it.confidence }?.text ?: "물건")
-                val conf = labels.maxByOrNull { it.confidence }?.confidence ?: 0.5f
-                val fullRect = Rect(0, 0, bitmap.width, bitmap.height)
-                val result = ObjectOverlayView.DetectionResult(fullRect, label, conf)
-                displayResults(bitmap, listOf(result))
+                binding.progressBar.visibility = View.GONE
+                android.util.Log.d("ObjectDetection", "Gemini raw response:\n$detectedText")
+                
+                // Parse JSON response
+                try {
+                    val cleanJson = detectedText.substringAfter("{").substringBeforeLast("}")
+                    val itemsMatch = Regex("\"items\"\\s*:\\s*\"([^\"]+)\"").find(detectedText)
+                    val areaMatch = Regex("\"areaId\"\\s*:\\s*(\\d+)").find(detectedText)
+                    
+                    val items = itemsMatch?.groupValues?.get(1) ?: "인식된 물건"
+                    val areaId = areaMatch?.groupValues?.get(1)?.toIntOrNull()
+                    
+                    binding.nameEditText.setText(items)
+                    binding.nameEditText.selectAll()
+                    
+                    if (areaId != null) {
+                        binding.roomMapView.selectedAreaId = areaId
+                    }
+                } catch (e: Exception) {
+                    // Fallback to old parsing if JSON fails
+                    val lines = detectedText.lines().map { it.replace(Regex("[*#\\\\-]"), "").trim() }
+                    val items = lines.firstOrNull { !it.contains("구역") } ?: "물건"
+                    binding.nameEditText.setText(items)
+                }
+            } catch (e: Exception) {
+                binding.progressBar.visibility = View.GONE
+                binding.nameEditText.setText("")
+                android.util.Log.e("GeminiError", "Gemini API failed", e)
+                val isNetError = e is java.net.UnknownHostException || 
+                                 e is java.net.ConnectException || 
+                                 e is java.io.IOException || 
+                                 (e.message?.contains("Unable to resolve host", ignoreCase = true) == true) ||
+                                 (e.message?.contains("network", ignoreCase = true) == true)
+                val friendlyMessage = if (isNetError) {
+                    "네트워크 연결이 없어서 AI 사물인식을 사용할 수 없습니다. 물건 이름을 수동으로 입력해 주세요!"
+                } else {
+                    "Gemini API 오류: ${e.message}"
+                }
+                Toast.makeText(this@ObjectDetectionActivity, friendlyMessage, Toast.LENGTH_LONG).show()
             }
-            .addOnFailureListener {
-                val fullRect = Rect(0, 0, bitmap.width, bitmap.height)
-                displayResults(bitmap, listOf(ObjectOverlayView.DetectionResult(fullRect, "물건", 0.5f)))
-            }
-    }
-
-    private fun translateLabel(englishLabel: String): String {
-        return when (englishLabel.lowercase(Locale.ROOT)) {
-            "cup", "coffee cup", "mug" -> "컵"
-            "glass", "drink" -> "유리컵"
-            "bottle", "water bottle" -> "물병"
-            "book", "novel" -> "책"
-            "notebook", "laptop" -> "노트북"
-            "cell phone", "mobile phone", "telephone" -> "휴대폰"
-            "keys", "key" -> "열쇠"
-            "wallet", "purse" -> "지갑"
-            "backpack", "bag" -> "가방"
-            "umbrella" -> "우산"
-            "glasses", "sunglasses" -> "안경"
-            "watch", "clock" -> "시계"
-            "pen", "pencil" -> "필기구"
-            "clothing", "jeans", "shirt", "coat", "jacket" -> "의류"
-            "shoe", "footwear", "sneaker" -> "신발"
-            "card" -> "카드"
-            "mouse", "computer mouse" -> "마우스"
-            "headphones", "earphones" -> "이어폰"
-            "pillow" -> "베개"
-            "blanket" -> "이불"
-            else -> englishLabel
         }
     }
 
-    private fun displayResults(bitmap: Bitmap, results: List<ObjectOverlayView.DetectionResult>) {
-        binding.progressBar.visibility = View.GONE
-        currentResults = results
-        binding.objectOverlayView.setData(bitmap, results)
-        if (results.isNotEmpty()) {
-            binding.nameEditText.setText(results[0].label)
-            binding.nameEditText.selectAll()
-        }
-
-        binding.objectOverlayView.setOnObjectSelectedListener { result ->
-            binding.nameEditText.setText(result.label)
+    private fun getRotationFromExif(uri: Uri): Int {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return 0
+            val exif = androidx.exifinterface.media.ExifInterface(inputStream)
+            inputStream.close()
+            when (exif.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL)) {
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                else -> 0
+            }
+        } catch (e: Exception) {
+            0
         }
     }
 
     private fun registerItem() {
-        val itemName = binding.nameEditText.text?.toString()?.trim().orEmpty()
-        if (itemName.isEmpty()) {
+        val inputText = binding.nameEditText.text?.toString()?.trim().orEmpty()
+        if (inputText.isEmpty() || inputText == "인식된 물건이 없습니다." || inputText.startsWith("AI가")) {
             Toast.makeText(this, "물건 이름을 입력하세요.", Toast.LENGTH_SHORT).show()
             return
         }
@@ -282,29 +317,50 @@ class ObjectDetectionActivity : AppCompatActivity() {
         val areas = itemStorage.getRoomAreas()
         val selectedArea = areas.firstOrNull { it.id == areaId } ?: return
 
-        val selectedIdx = binding.objectOverlayView.selectedIndex
-        var boundingBoxStr: String? = null
-        if (selectedIdx in currentResults.indices) {
-            val rect = currentResults[selectedIdx].boundingBox
-            boundingBoxStr = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
+        val itemNames = inputText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (itemNames.isEmpty()) {
+            Toast.makeText(this, "유효한 물건 이름이 없습니다.", Toast.LENGTH_SHORT).show()
+            return
         }
 
         val timestamp = System.currentTimeMillis()
-        val record = ItemRecord(
-            id = UUID.randomUUID().toString(),
-            name = itemName,
-            areaId = areaId,
-            areaName = selectedArea.name,
-            timestamp = timestamp,
-            photoUri = photoUri?.toString(),
-            boundingBox = boundingBoxStr,
-            isFavorite = false
-        )
+        var successCount = 0
 
-        itemStorage.addItem(record)
+        lifecycleScope.launch {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.registerButton.isEnabled = false
 
-        Toast.makeText(this, "${itemName}이(가) ${selectedArea.name}에 등록되었습니다.", Toast.LENGTH_SHORT).show()
-        setResult(RESULT_OK)
-        finish()
+            for (itemName in itemNames) {
+                val record = ItemRecord(
+                    id = UUID.randomUUID().toString(),
+                    name = itemName,
+                    areaId = areaId,
+                    areaName = selectedArea.name,
+                    timestamp = timestamp,
+                    photoUri = photoUri?.toString(),
+                    boundingBox = null,
+                    isFavorite = false
+                )
+
+                itemStorage.addItem(record)
+                successCount++
+            }
+            
+            // Add to remote sync
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                try {
+                    itemStorage.syncItemsRemote()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            binding.progressBar.visibility = View.GONE
+            binding.registerButton.isEnabled = true
+
+            Toast.makeText(this@ObjectDetectionActivity, "${itemNames.size}개의 물건이 등록되었습니다! (서버 동기화 성공: $successCount)", Toast.LENGTH_LONG).show()
+            setResult(RESULT_OK)
+            finish()
+        }
     }
 }

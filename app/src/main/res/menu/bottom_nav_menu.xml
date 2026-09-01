@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_search"
+        android:icon="@android:drawable/ic_menu_search"
+        android:title="검색" />
+    <item
+        android:id="@+id/nav_room_map"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="방 지도" />
+    <item
+        android:id="@+id/nav_favorites"
+        android:icon="@android:drawable/btn_star_big_on"
+        android:title="즐겨찾기" />
+    <item
+        android:id="@+id/nav_checklist"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="체크리스트" />
+    <item
+        android:id="@+id/nav_stats"
+        android:icon="@android:drawable/ic_menu_info_details"
+        android:title="통계" />
+</menu>

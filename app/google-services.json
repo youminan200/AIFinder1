@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "790832388044",
+    "project_id": "aifinder-3d776",
+    "storage_bucket": "aifinder-3d776.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:790832388044:android:7641e4b76a983da3a16f69",
+        "android_client_info": {
+          "package_name": "kr.ac.pcu.aifinder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCc-LM3-f9nRG65IettwITdLdaUWxClxTI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

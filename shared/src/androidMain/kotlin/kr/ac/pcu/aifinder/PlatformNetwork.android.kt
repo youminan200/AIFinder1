@@ -21,6 +21,7 @@ actual class PlatformNetwork actual constructor() {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("Bypass-Tunnel-Reminder", "true")
                 
                 OutputStreamWriter(connection.outputStream).use { writer ->
                     writer.write(jsonBody)
@@ -49,6 +50,7 @@ actual class PlatformNetwork actual constructor() {
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("Bypass-Tunnel-Reminder", "true")
                 
                 val responseCode = connection.responseCode
                 if (responseCode in 200..299) {
