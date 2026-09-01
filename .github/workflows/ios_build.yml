@@ -28,21 +28,25 @@ jobs:
 
     - name: Build iOS App
       run: |
-        # Pre-build Kotlin framework to ensure it's available for Xcode
+        # 1. Build the Kotlin framework first
         ./gradlew :shared:assembleRelease --no-daemon
         
         cd iosApp
-        # Disable sandboxing and use manual path for the framework if needed
+        # 2. Build the Xcode project with specific flags to ignore signing and use the right arch
         xcodebuild -project iosApp.xcodeproj \
                    -scheme iosApp \
                    -configuration Release \
                    -sdk iphoneos \
                    -derivedDataPath build \
+                   ARCHS=arm64 \
+                   ONLY_ACTIVE_ARCH=NO \
                    ENABLE_USER_SCRIPT_SANDBOXING=NO \
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
-                   AD_HOC_CODE_SIGNING_ALLOWED=YES
+                   AD_HOC_CODE_SIGNING_ALLOWED=YES \
+                   COMPILER_INDEX_STORE_ENABLE=NO \
+                   clean build
 
     - name: Package .ipa
       run: |
