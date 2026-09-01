@@ -28,16 +28,17 @@ jobs:
 
     - name: Build iOS App
       run: |
-        # Gradle will be called by Xcode Run Script phase if configured correctly, 
-        # but to be sure we build it here first.
+        # Pre-build Kotlin framework to ensure it's available for Xcode
         ./gradlew :shared:assembleRelease --no-daemon
         
         cd iosApp
+        # Disable sandboxing and use manual path for the framework if needed
         xcodebuild -project iosApp.xcodeproj \
                    -scheme iosApp \
                    -configuration Release \
                    -sdk iphoneos \
                    -derivedDataPath build \
+                   ENABLE_USER_SCRIPT_SANDBOXING=NO \
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
