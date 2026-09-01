@@ -27,15 +27,32 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x gradlew
 
-    - name: Build iOS Shared Framework (Release)
-      run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon
+    - name: Build iOS App
+      run: |
+        # Gradle will be called by Xcode Run Script phase if configured correctly, 
+        # but to be sure we build it here first.
+        ./gradlew :shared:assembleRelease --no-daemon
+        
+        cd iosApp
+        xcodebuild -project iosApp.xcodeproj \
+                   -scheme iosApp \
+                   -configuration Release \
+                   -sdk iphoneos \
+                   -derivedDataPath build \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGNING_REQUIRED=NO \
+                   CODE_SIGN_IDENTITY="" \
+                   AD_HOC_CODE_SIGNING_ALLOWED=YES
 
-    # Note: Building a full .ipa requires code signing which needs Apple Developer certs.
-    # We build the framework to ensure the code is correct for iOS.
-    
-    - name: Upload iOS Framework Artifact
+    - name: Package .ipa
+      run: |
+        mkdir -p Payload
+        cp -r iosApp/build/Build/Products/Release-iphoneos/iosApp.app Payload/
+        zip -r iosApp.ipa Payload
+        
+    - name: Upload iOS IPA Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: shared-ios-framework
-        path: shared/build/bin/iosArm64/releaseFramework/
+        name: ios-app-ipa
+        path: iosApp.ipa
         retention-days: 7
